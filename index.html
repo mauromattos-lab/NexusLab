@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus: AI Business Diagnostician</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-color: #010411;
+        --primary-glow: #00f6ff;
+        --secondary-glow: #ff00c1;
+        --border-color: rgba(0, 246, 255, 0.2);
+        --text-color: #d1d5db;
+        --text-secondary: #9ca3af;
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        overflow: hidden;
+      }
+
+      body::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+          linear-gradient(to right, rgba(0, 246, 255, 0.1) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0, 246, 255, 0.1) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        animation: background-pan 30s linear infinite;
+        z-index: -1;
+      }
+      
+      .text-glow {
+        text-shadow: 0 0 8px var(--primary-glow);
+      }
+      
+      .text-glow-secondary {
+        text-shadow: 0 0 8px var(--secondary-glow);
+      }
+
+      .glass-pane {
+        background-color: rgba(10, 15, 39, 0.5);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 0 30px rgba(0, 246, 255, 0.1);
+      }
+      
+      .input-glow:focus {
+        border-color: var(--primary-glow) !important;
+        box-shadow: 0 0 10px var(--primary-glow) !important;
+      }
+
+      /* Glitch Effect */
+      .glitch {
+        position: relative;
+        color: white;
+      }
+      .glitch::before,
+      .glitch::after {
+        content: attr(data-text);
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg-color);
+      }
+      .glitch::before {
+        left: 2px;
+        text-shadow: -1px 0 var(--secondary-glow);
+        animation: glitch-effect 5s infinite linear;
+      }
+      .glitch::after {
+        left: -2px;
+        text-shadow: -1px 0 var(--primary-glow);
+        animation: glitch-effect 7s infinite linear;
+      }
+      
+      /* Animations */
+      @keyframes background-pan {
+        0% { background-position: 0 0; }
+        100% { background-position: -400px -400px; }
+      }
+      
+      @keyframes glitch-effect {
+        /* Idle State */
+        0%, 95%, 98.1%, 100% {
+          opacity: 0;
+          clip-path: inset(50% 0 50% 0);
+        }
+
+        /* Glitch Burst from 98% to 99% */
+        98.2% { clip-path: inset(45% 0 45% 0); opacity: 1; }
+        98.3% { clip-path: inset(65% 0 15% 0); }
+        98.4% { clip-path: inset(30% 0 50% 0); }
+        98.5% { clip-path: inset(80% 0 10% 0); }
+        98.6% { clip-path: inset(40% 0 40% 0); }
+        98.7% { clip-path: inset(20% 0 70% 0); }
+        98.8% { clip-path: inset(90% 0 5% 0); }
+        98.9% { clip-path: inset(40% 0 45% 0); }
+        99% { clip-path: inset(10% 0 80% 0); }
+        99.1% { clip-path: inset(70% 0 20% 0); }
+        99.2% { clip-path: inset(35% 0 55% 0); }
+        99.3% { clip-path: inset(60% 0 30% 0); }
+        99.4% { clip-path: inset(25% 0 65% 0); }
+        99.5% { clip-path: inset(85% 0 5% 0); }
+        99.6% { clip-path: inset(40% 0 40% 0); }
+        99.7% { clip-path: inset(15% 0 75% 0); }
+        99.8% { clip-path: inset(55% 0 35% 0); }
+        99.9% { clip-path: inset(20% 0 70% 0); }
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @keyframes fadeOutDown {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(20px); }
+      }
+
+      @keyframes transmission-off {
+        0% { transform: scaleY(1); opacity: 1; }
+        50% { transform: scaleY(0.01); opacity: 0.5; }
+        100% { transform: scaleY(0); opacity: 0; }
+      }
+
+      .animate-fade-in { animation: fadeIn 1s ease-out forwards; }
+      .animate-fade-in-up { animation: fadeInUp 0.7s ease-out forwards; }
+      .animate-fade-out-down { animation: fadeOutDown 0.5s ease-in forwards; }
+      .animate-transmission-off { animation: transmission-off 0.5s ease-in-out forwards; }
+      
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--primary-glow);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #00b8c0;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.27.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"
+  }
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
