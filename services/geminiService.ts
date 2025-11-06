@@ -1,13 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { DiagnosisResult, DiagnosisData } from '../types';
 
-const API_KEY = process.env.API_KEY;
+let ai: GoogleGenAI | null = null;
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
+try {
+  const API_KEY = process.env.API_KEY;
+  if (!API_KEY) {
+    throw new Error("API_KEY environment variable not set");
+  }
+  ai = new GoogleGenAI({ apiKey: API_KEY });
+} catch (e) {
+  console.error("Failed to initialize GoogleGenAI, AI services will be disabled.", e);
 }
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const diagnosisSchema = {
     type: Type.OBJECT,
@@ -205,6 +209,10 @@ Com base nos dados acima, preencha o seguinte esquema JSON. Calcule os valores d
 }
 
 export const getDiagnosis = async (data: DiagnosisData): Promise<DiagnosisResult> => {
+    if (!ai) {
+      throw new Error("Não foi possível conectar ao serviço de IA. Verifique as configurações da API Key no ambiente e a sua conexão.");
+    }
+
     try {
         const prompt = buildPrompt(data);
         
