@@ -62,10 +62,11 @@ export const PdfReport: React.FC<PdfReportProps> = ({ result, diagnosisData }) =
                     strokeDashoffset={offset}
                     strokeLinecap="round"
                     transform="rotate(-90 50 50)" />
+                  <text x="50" y="50" textAnchor="middle" dominantBaseline="middle"
+                        style={{ fontSize: '24pt', fontWeight: 700, fill: 'white' }}>
+                    {score}
+                  </text>
                 </svg>
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '24pt', fontWeight: 700, color: 'white' }}>
-                  {score}
-                </div>
             </div>
           </div>
           
@@ -143,14 +144,17 @@ export const PdfReport: React.FC<PdfReportProps> = ({ result, diagnosisData }) =
           <h2 style={{ fontSize: '14.5pt', fontWeight: 700, color: '#ffffff' }}>Próximos Passos</h2>
           <p style={{ maxWidth: '150mm', margin: '3mm auto 6mm auto', fontSize: '10.5pt' }}>O diagnóstico é o primeiro passo. A consultoria estratégica é a rota mais rápida para transformar estes insights em um plano de implementação personalizado.</p>
           <a id="pdf-calendly-button" href={APP_CONFIG.calendlyLink} target="_blank" rel="noopener noreferrer" style={{
-              display: 'inline-block',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               textDecoration: 'none',
               color: 'white',
               fontSize: '11pt',
               fontWeight: 600,
               padding: '3mm 6mm',
+              lineHeight: '1',
               borderRadius: '8px',
-              backgroundImage: 'linear-gradient(to right, #00f6ff, #ff00c1)',
+              backgroundImage: 'linear-gradient(to right, #00f6ff, #ff00c1)'
           }}>
               Agendar Consultoria Estratégica
           </a>
