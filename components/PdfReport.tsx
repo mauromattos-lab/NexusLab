@@ -1,6 +1,9 @@
 import React from 'react';
 import type { DiagnosisResult, DiagnosisData } from '../types';
 import { APP_CONFIG } from '../config';
+import { OpportunityMap } from './OpportunityMap';
+import { MaturityChart } from './MaturityChart';
+import { InsightsBlock } from './InsightsBlock';
 
 interface PdfReportProps {
     result: DiagnosisResult;
@@ -91,12 +94,20 @@ export const PdfReport: React.FC<PdfReportProps> = ({ result, diagnosisData }) =
             <h2 style={{ fontSize: '14.5pt', fontWeight: 700, color: '#ffffff', borderBottom: '1px solid #ff00c1', paddingBottom: '2mm', marginBottom: '4mm' }}>
               Resumo Executivo
             </h2>
+            {/* Texto institucional Sparkle */}
+            <p style={{ margin: '0 0 4mm 0' }}>
+              A Sparkle analisou os principais gargalos do seu modelo de operação e mapeou ganhos diretos com IA — usando as mesmas tecnologias que aplicamos internamente em nossas automações de atendimento (Zenya) e conteúdo (Juno). Este diagnóstico conecta dados reais do seu negócio ao nosso ecossistema de IAs para acelerar resultados com segurança e previsibilidade.
+            </p>
+            {/* Resumo específico gerado pela IA (mantido) */}
             <p style={{ margin: '0 0 8mm 0' }}>{result.executiveSummary}</p>
         </div>
       </div>
-      
+
       {/* Single-Column Section */}
       <div>
+        {/* Mapa de Oportunidades e Índice de Maturidade */}
+        <OpportunityMap />
+        <MaturityChart />
         <h2 style={{ fontSize: '14.5pt', fontWeight: 700, color: '#ffffff', borderBottom: '1px solid #ff00c1', paddingBottom: '2mm', marginBottom: '6mm' }}>
           Plano de Ação: Soluções Recomendadas
         </h2>
@@ -139,6 +150,9 @@ export const PdfReport: React.FC<PdfReportProps> = ({ result, diagnosisData }) =
           </div>
         ))}
         
+        {/* Insights estratégicos antes do CTA */}
+        <InsightsBlock />
+
         {/* Call to Action */}
         <footer style={{ marginTop: '8mm', paddingTop: '8mm', borderTop: '1px solid rgba(0, 246, 255, 0.2)', textAlign: 'center', pageBreakInside: 'avoid' }}>
           <h2 style={{ fontSize: '14.5pt', fontWeight: 700, color: '#ffffff' }}>Próximos Passos</h2>
@@ -156,8 +170,11 @@ export const PdfReport: React.FC<PdfReportProps> = ({ result, diagnosisData }) =
               borderRadius: '8px',
               backgroundImage: 'linear-gradient(to right, #00f6ff, #ff00c1)'
           }}>
-              Agendar Consultoria Estratégica
+              Agendar Call Estratégica Gratuita
           </a>
+          <p style={{ marginTop: '3mm', color: '#cbd5e1', fontSize: '9.5pt' }}>
+            Mapeamos o escopo, integrações e próximos passos para implementar IA com a Sparkle.
+          </p>
         </footer>
       </div>
 
