@@ -1,8 +1,50 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
 import type { DiagnosisData, DiagnosisResult } from '../types';
 
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
+
+// Índice de oportunidade (0..1) baseado na severidade dos gargalos
+function computeOpportunityIndex(data: DiagnosisData): number {
+  let pts = 0;
+  let max = 0;
+  switch (data.businessType) {
+    case 'appointment_services': {
+      const noShow = (data.noShowRate || 0) * 100;
+      pts += clamp((noShow - 5) / 25, 0, 1); max += 1;
+      const vol = data.monthlyAppointments || 0;
+      pts += clamp(vol / 200, 0, 1); max += 1;
+      break;
+    }
+    case 'quote_services': {
+      const conv = (data.quoteConversionRate || 0) * 100;
+      pts += clamp((60 - conv) / 40, 0, 1); max += 1;
+      const deal = data.avgDealValue || 0; pts += clamp(deal / 10000, 0, 1); max += 1;
+      const quotes = data.monthlyQuotes || 0; pts += clamp(quotes / 100, 0, 1); max += 1;
+      break;
+    }
+    case 'recurring_services': {
+      const churn = (data.monthlyChurnRate || 0) * 100;
+      pts += clamp((churn - 2) / 10, 0, 1); max += 1;
+      const fee = data.avgSubscriptionFee || 0; pts += clamp(fee / 200, 0, 1); max += 1;
+      const subs = data.activeSubscribers || 0; pts += clamp(subs / 2000, 0, 1); max += 1;
+      break;
+    }
+    case 'products': {
+      const weeklyLost = data.weeklyLostSalesLocal || 0;
+      const aov = data.avgOrderValueLocal || 0;
+      pts += clamp((weeklyLost * aov) / 10000, 0, 1); max += 1;
+      pts += data.repetitiveQuestionsLocal === 'constant' ? 1 : data.repetitiveQuestionsLocal === 'sometimes' ? 0.5 : 0; max += 1;
+      break;
+    }
+  }
+  const comm = data.manualCommHours;
+  pts += comm === '>3' ? 1 : comm === '1-3' ? 0.6 : 0.2; max += 1;
+  pts += (data.offHoursResponse === 'undefined' || data.offHoursResponse === 'manual_next_day') ? 1 : 0; max += 1;
+  pts += (data.reviewRequestProcess === 'inactive' ? 0.6 : 0) + (data.clientReengagementProcess === 'inactive' ? 0.6 : 0); max += 1.2;
+
+  const idx = max > 0 ? clamp(pts / max, 0, 1) : 0;
+  return idx;
+}
 
 // Baseline determinístico com base nos KPIs objetivos
 function computeBaseline(data: DiagnosisData): number {
@@ -121,6 +163,7 @@ function formatPromotionCommunication(value?: string): string {
 
 function buildPrompt(data: DiagnosisData): string {
   const baseline = computeBaseline(data);
+  const allowedVariance = Math.round(10 + 20 * computeOpportunityIndex(data));
   let businessSpecifics = '';
   switch (data.businessType) {
     case 'appointment_services': {
@@ -178,8 +221,9 @@ function buildPrompt(data: DiagnosisData): string {
 Você é o NEXUS, um super-analista de negócios de IA. Gere um diagnóstico estratégico em JSON ESTRITO no schema abaixo, baseado nos dados.
 
 REGRA PARA PONTUAÇÃO:
-- Use o campo baselineScore=${'${baseline}'} como referência determinística calculada pelos KPIs.
-- Calcule potentialTransformationScore em torno do baselineScore com variação máxima de ±10 pontos, mantendo no intervalo [0,100]. Seja criterioso: ajuste para cima se os problemas forem críticos; para baixo se os riscos forem menores.
+- baselineScore=${baseline}
+- allowedVariance=±${allowedVariance}
+- Calcule potentialTransformationScore em torno do baselineScore com a variação máxima definida por allowedVariance, mantendo o intervalo [0,100]. Aumente mais quando houver muitos gargalos severos; reduza quando os riscos forem mínimos.
 
 Schema:
 {
@@ -216,6 +260,7 @@ Dados do negócio:
 - Nome da Empresa: ${data.companyName || 'N/A'}
 - E-mail: ${data.email || 'N/A'}
 - baselineScore: ${baseline}
+- allowedVariance: ${allowedVariance}
 
 Específicos:
 ${businessSpecifics}
@@ -230,13 +275,14 @@ Responda APENAS com JSON válido conforme o schema, sem texto extra.
 `;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).send('Method Not Allowed');
     return;
   }
   try {
     const apiKey = process.env.OPENAI_API_KEY;
+
     if (!apiKey) {
       res.status(500).send('OPENAI_API_KEY não configurada');
       return;
@@ -248,6 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const baseline = computeBaseline(data);
+    const allowedVariance = Math.round(10 + 20 * computeOpportunityIndex(data));
 
     const openai = new OpenAI({ apiKey });
     const completion = await openai.chat.completions.create({
@@ -262,11 +309,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const raw = completion.choices[0]?.message?.content || '{}';
     const result = JSON.parse(raw) as DiagnosisResult;
 
-    // Ajuste final: clamp ao redor do baseline e [0..100]
+    // Ajuste final: clamp dinâmico ao redor do baseline e [0..100]
     let score = Number(result.potentialTransformationScore);
     if (!Number.isFinite(score)) score = baseline;
     score = Math.round(score);
-    score = clamp(score, baseline - 10, baseline + 10);
+    score = clamp(score, baseline - allowedVariance, baseline + allowedVariance);
     score = clamp(score, 0, 100);
     result.potentialTransformationScore = score;
 
