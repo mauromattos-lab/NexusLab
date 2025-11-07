@@ -3,6 +3,45 @@ import type { DiagnosisData, DiagnosisResult } from '../types';
 
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
 
+function nonEmpty(v: any, fb: string) {
+  if (typeof v === 'string') {
+    const s = v.trim();
+    return s.length ? s : fb;
+  }
+  return v ?? fb;
+}
+
+function completeSolution(s: any): any {
+  const impactVals = ['Alto','Médio','Baixo'] as const;
+  const impact = impactVals.includes(s?.impact) ? s.impact : 'Alto';
+  return {
+    title: nonEmpty(s?.title, 'Assistente de IA para Atendimento 24/7'),
+    description: nonEmpty(s?.description, 'Uma IA que atende clientes 24/7, qualifica leads e reduz perdas por demora de resposta.'),
+    impact,
+    implementationTime: nonEmpty(s?.implementationTime, '3–6 semanas'),
+    expectedROI: nonEmpty(s?.expectedROI, 'Aumento de 15–30% na conversão e redução de 50–80% no tempo em perguntas repetitivas'),
+    benefits: Array.isArray(s?.benefits) && s.benefits.length ? s.benefits : [
+      'Atendimento 24/7, inclusive fora do horário',
+      'Qualificação automática de leads',
+      'Redução de tempo com perguntas repetitivas'
+    ],
+    detailedExplanation: nonEmpty(s?.detailedExplanation, 'Implementação de um assistente de IA com PLN para responder dúvidas frequentes, qualificar leads e encaminhar agendamentos. Reduz perdas por demora e libera a equipe para atividades de maior valor.')
+  };
+}
+
+function ensureResultComplete(result: any, data: any): any {
+  result.potentialEconomy = nonEmpty(result.potentialEconomy, 'R$ 15.000/mês');
+  result.timeRecovered = nonEmpty(result.timeRecovered, '10 horas/semana');
+  result.productivityGain = nonEmpty(result.productivityGain, '30%');
+  result.implementationTimeframe = nonEmpty(result.implementationTimeframe, '6–10 semanas');
+  result.executiveSummary = nonEmpty(result.executiveSummary, `Nossa análise indica que ${data.companyName || 'seu negócio'} possui alto potencial de transformação com IA. As principais oportunidades estão em reduzir esforço manual e aumentar conversões com atendimento 24/7 e automação inteligente.`);
+  const sols = Array.isArray(result.solutions) ? result.solutions : [];
+  const completed = sols.map(completeSolution);
+  while (completed.length < 3) completed.push(completeSolution({}));
+  result.solutions = completed.slice(0, 4);
+  return result;
+}
+
 // Índice de oportunidade (0..1) baseado na severidade dos gargalos
 function computeOpportunityIndex(data: DiagnosisData): number {
   let pts = 0;
@@ -225,6 +264,11 @@ REGRA PARA PONTUAÇÃO:
 - allowedVariance=±${allowedVariance}
 - Calcule potentialTransformationScore em torno do baselineScore com a variação máxima definida por allowedVariance, mantendo o intervalo [0,100]. Aumente mais quando houver muitos gargalos severos; reduza quando os riscos forem mínimos.
 
+REQUISITOS DE COMPLETUDE:
+- Todos os campos devem vir PREENCHIDOS (sem strings vazias).
+- Gere de 3 a 4 soluções completas. Cada solução deve conter title, description, impact, implementationTime, expectedROI, benefits (3+ itens) e detailedExplanation.
+- Ajuste os textos para serem claros e prontos para um relatório PDF profissional.
+
 Schema:
 {
   "type": "object",
@@ -307,7 +351,7 @@ export default async function handler(req: any, res: any) {
     });
 
     const raw = completion.choices[0]?.message?.content || '{}';
-    const result = JSON.parse(raw) as DiagnosisResult;
+    let result = JSON.parse(raw) as DiagnosisResult;
 
     // Ajuste final: clamp dinâmico ao redor do baseline e [0..100]
     let score = Number(result.potentialTransformationScore);
@@ -315,7 +359,10 @@ export default async function handler(req: any, res: any) {
     score = Math.round(score);
     score = clamp(score, baseline - allowedVariance, baseline + allowedVariance);
     score = clamp(score, 0, 100);
+    // Piso/teto realista na UI
+    score = clamp(score, 50, 96);
     result.potentialTransformationScore = score;
+    result = ensureResultComplete(result, data) as DiagnosisResult;
 
     res.status(200).json(result);
   } catch (err: any) {

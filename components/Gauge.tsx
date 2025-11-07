@@ -10,7 +10,7 @@ export const Gauge: React.FC<GaugeProps> = ({ score }) => {
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="relative w-40 h-40">
+    <div className="relative w-32 h-32">
       <svg className="w-full h-full" viewBox="0 0 120 120">
         <defs>
             <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -42,7 +42,7 @@ export const Gauge: React.FC<GaugeProps> = ({ score }) => {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-5xl font-bold text-white text-glow">{score}</span>
+        <span className="text-4xl font-bold text-white text-glow">{score}</span>
       </div>
     </div>
   );
