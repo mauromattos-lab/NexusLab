@@ -264,6 +264,13 @@ REGRA PARA PONTUAÇÃO:
 - allowedVariance=±${allowedVariance}
 - Calcule potentialTransformationScore em torno do baselineScore com a variação máxima definida por allowedVariance, mantendo o intervalo [0,100]. Aumente mais quando houver muitos gargalos severos; reduza quando os riscos forem mínimos.
 
+DIRETRIZES ADICIONAIS (GUIA NÃO-RÍGIDO):
+- Use a tabela fornecida pelo produto como referência para realismo dos números; ajuste ao contexto específico do negócio (sem seguir regras 100% rígidas).
+- Quanto maior o potencial de ganho (economia, tempo recuperado, impacto), maior deve ser a pontuação.
+- Foque EXCLUSIVAMENTE em soluções de implementação de IA (assistentes, automações com PLN, RAG, classificação/roteamento com IA, etc.). Não proponha campanhas genéricas sem IA.
+- Formate sempre valores monetários em BRL, usando o prefixo "R$".
+- A taxa de no-show é informada pelo usuário em porcentagem (%). Interprete corretamente, mantendo a consistência na apresentação (ex.: "20%").
+
 REQUISITOS DE COMPLETUDE:
 - Todos os campos devem vir PREENCHIDOS (sem strings vazias).
 - Gere de 3 a 4 soluções completas. Cada solução deve conter title, description, impact, implementationTime, expectedROI, benefits (3+ itens) e detailedExplanation.
@@ -359,8 +366,8 @@ export default async function handler(req: any, res: any) {
     score = Math.round(score);
     score = clamp(score, baseline - allowedVariance, baseline + allowedVariance);
     score = clamp(score, 0, 100);
-    // Piso/teto realista na UI
-    score = clamp(score, 50, 96);
+    // Piso/teto realista na UI (clamp suave para conter extrapolações)
+    score = clamp(score, 40, 95);
     result.potentialTransformationScore = score;
     result = ensureResultComplete(result, data) as DiagnosisResult;
 

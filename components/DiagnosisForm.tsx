@@ -87,7 +87,7 @@ const conversationFlow: ({
     
     // Appointment-based Service Path
     { id: 'getAppointments', businessType: 'appointment_services', text: 'Entendido. Operações baseadas em agendamento possuem três variáveis críticas: volume, tempo e comparecimento. Vamos quantificar a sua. Em um mês típico, qual é o volume de agendamentos que seu negócio realiza?', key: 'monthlyAppointments', input: { type: 'number', placeholder: 'Ex: 150', key: 'monthlyAppointments' }, options: [{ text: 'Menos de 50', value: 50 }, { text: 'Entre 50 e 150', value: 100 }, { text: 'Mais de 150', value: 200 }] },
-    { id: 'getNoShow', key: 'noShowRate', businessType: 'appointment_services', text: "Agora, um parâmetro sensível: a taxa de 'no-show'. De cada 10 clientes com horário marcado, quantos, em média, não aparecem?", options: [{ text: '1 em 10 (10%)', value: 0.1 }, { text: '2 em 10 (20%)', value: 0.2 }, { text: '3 ou mais (+25%)', value: 0.25 }, { text: 'Quase ninguém', value: 0 }] },
+    { id: 'getNoShow', key: 'noShowRate', businessType: 'appointment_services', text: "Agora, um parâmetro sensível: a taxa de 'no-show'. De cada 10 clientes com horário marcado, quantos, em média, não aparecem? (Você pode digitar um valor em %)", input: { type: 'number', placeholder: 'Ex: 20 (em %)', key: 'noShowRate' }, options: [{ text: '1 em 10 (10%)', value: 0.1 }, { text: '2 em 10 (20%)', value: 0.2 }, { text: '3 ou mais (+25%)', value: 0.25 }, { text: 'Quase ninguém', value: 0 }] },
     { id: 'getTicket', businessType: 'appointment_services', text: 'Entendido. Agora, vamos traduzir isso em impacto financeiro. Qual é o valor médio que você fatura por atendimento? (Seu ticket médio)', key: 'ticketPrice', input: { type: 'number', placeholder: 'Ex: 200', key: 'ticketPrice' }, options: [{ text: 'R$ 50', value: 50 }, { text: 'R$ 150', value: 150 }, { text: 'R$ 300', value: 300 }] },
     { id: 'impactMessageAppointments', businessType: 'appointment_services', text: 'Calculando... Com base nos seus dados, a taxa de no-show representa um prejuízo estimado de R$ {loss} todos os meses. É um valor que está sendo deixado na mesa por falta de um sistema proativo.' },
 
@@ -134,6 +134,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onSubmit, error, audioMa
     const [isNexusTyping, setIsNexusTyping] = useState(true);
     const [data, setData] = useState<Partial<DiagnosisData>>({});
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+
     const currentFlowStep = conversationFlow[step];
 
     const addNexusMessage = useCallback(() => {
@@ -164,7 +166,35 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onSubmit, error, audioMa
     
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isNexusTyping]);
+    }, [messages]);
+
+    // Continuous auto-scroll while typing and on container resize (mobile-friendly)
+    useEffect(() => {
+        const el = chatContainerRef.current;
+        if (!el) return;
+
+        let rafId = 0;
+        const tick = () => {
+            el.scrollTop = el.scrollHeight;
+            rafId = requestAnimationFrame(tick);
+        };
+
+        if (isNexusTyping) {
+            rafId = requestAnimationFrame(tick);
+        } else {
+            el.scrollTop = el.scrollHeight;
+        }
+
+        const ro = new ResizeObserver(() => {
+            el.scrollTop = el.scrollHeight;
+        });
+        ro.observe(el);
+
+        return () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            ro.disconnect();
+        };
+    }, [isNexusTyping, messages.length]);
 
     const onTypingComplete = useCallback(() => {
         setIsNexusTyping(false);
@@ -196,17 +226,50 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onSubmit, error, audioMa
         const key = currentFlowStep.input?.key || currentFlowStep.key;
         
         let newData = { ...data };
+        let shownText = displayValue;
         if(key && value !== 'skip') {
             if(key === 'userName' && typeof value === 'string' && value.includes(',')) {
                 const [name, company] = value.split(',').map(s => s.trim());
                 newData = { ...newData, userName: name, companyName: company };
+                shownText = `${name}, ${company}`;
             } else {
-                newData = { ...newData, [key]: value };
+                let stored: any = value;
+                // Parse numeric inputs from manual typing
+                const monetaryKeys: (keyof DiagnosisData)[] = ['ticketPrice','avgDealValue','avgOrderValueLocal'];
+                const numericKeys: (keyof DiagnosisData)[] = ['monthlyAppointments','monthlyQuotes','activeSubscribers','avgSubscriptionFee','weeklyLostSalesLocal'];
+                if (key === 'noShowRate') {
+                    if (typeof value === 'string') {
+                        const p = parseFloat(value.replace(',','.'));
+                        if (!isNaN(p)) stored = Math.max(0, Math.min(100, p)) / 100; // store as 0..1
+                    }
+                    if (!shownText) {
+                        const showP = typeof value === 'number' ? Math.round(value * 100) : Math.round(parseFloat((value as string).replace(',','.')) || 0);
+                        shownText = `${showP}%`;
+                    }
+                } else if (monetaryKeys.includes(key)) {
+                    if (typeof value === 'string') {
+                        const n = parseFloat(value.replace(',','.'));
+                        if (!isNaN(n)) stored = n;
+                    }
+                    if (!shownText) {
+                        const n = typeof stored === 'number' ? stored : parseFloat(stored);
+                        shownText = `R$ ${Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`;
+                    }
+                } else if (numericKeys.includes(key)) {
+                    if (typeof value === 'string') {
+                        const n = parseFloat(value.replace(',','.'));
+                        if (!isNaN(n)) stored = n;
+                    }
+                    if (!shownText) {
+                        shownText = `${stored}`;
+                    }
+                }
+                newData = { ...newData, [key]: stored } as any;
             }
             setData(newData);
         }
         
-        const textToShow = displayValue || (value === 'skip' ? 'Pular esta etapa' : (typeof value === 'number' ? `R$ ${value}` : value.toString()));
+        const textToShow = shownText || (value === 'skip' ? 'Pular esta etapa' : (typeof value === 'number' ? `${value}` : value.toString()));
         setMessages(prev => [...prev, { sender: 'user', text: textToShow }]);
         setUserInput('');
         
@@ -258,7 +321,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ onSubmit, error, audioMa
                 </button>
             </header>
 
-            <main className="flex-1 glass-pane rounded-xl p-6 overflow-y-auto min-h-0">
+            <main ref={chatContainerRef} className="flex-1 glass-pane rounded-xl p-6 overflow-y-auto min-h-0">
                 <div className="space-y-6">
                     {messages.map((msg, index) => {
                          if (msg.sender === 'user') {
